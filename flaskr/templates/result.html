@@ -1,0 +1,16 @@
+{% extends "style.html" %}
+<h2>the searching results are shown below</h2>
+{% block body %}
+  {% if error %}<p class="error"><strong>Error:</strong> {{ error }}{% endif %}
+<br> <br> <br> <br> <br> <br> <br> 
+      <table border = 1>
+         {% for key,value in values.items() %}
+         
+            <tr>
+               <th> {{ key }} </th>
+               <td> {{ value }} </td>
+            </tr>
+            
+         {% endfor %}
+      </table>
+{% endblock %}

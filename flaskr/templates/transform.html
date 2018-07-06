@@ -1,0 +1,20 @@
+{% extends "style.html" %}
+{% block body %}
+  <form action="/result" method="get">
+    <div class="form-group" style="margin: 500; padding: 1000">
+      <label for="fre_selection">please select the desired frequency</label>
+      <select name="frequency">
+        {% for key in values %}
+        <option value="{{key}}" maxlength="30" size="10" id ='target_freq'>{{key}}</option>
+        {% endfor %}
+      </select>
+       <select name="data_type">
+        {% for key in type %}
+        <option value="{{key}}" maxlength="30" size="10" id ='target_type'>{{key}}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" id="operator" name="operator" value="t">
+    </div>
+    <button class="btn btn-default" type="submit">transform</button>
+  </form>
+{% endblock %}

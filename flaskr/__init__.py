@@ -6,6 +6,7 @@ import redis
 import pickle
 from algorithms import * 
 from utility import *
+from api import *
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
@@ -14,7 +15,7 @@ algs = ['ARIMA']
 alg_param = {'ARIMA':['P','I','Q']}
 # with open('indexing','rb') as f:
 #     index=pickle.load(f)
-
+freq = ''
 
 query_name_time_series = {}
 selected_time_series = ""
@@ -48,15 +49,14 @@ def main_page():
 def result():
 	global selected_alg
 	global selected_time_series
-	index_key = index[selected_time_series]
-	v = json.loads(db.get(index_key))
-	print(v)
+	data = get_from_database(selected_time_series,db,index)
 	operator = request.args['operator']
 	data_type = request.args['data_type']
 	request_time = request.args['frequency']
 # def apply(algorithm,params,data,operator,data_type,time,weight):
-	if is_valid(v):
-		predicted_data = apply(algorithm = selected_alg,params = request.args,data = v,operator =operator,data_type = data_type,time = request_time)
+	if is_valid(data):
+		predicted_data = apply(algorithm = selected_alg,params = request.args,data = data,operator =operator,data_type = data_type,time = request_time)
+		# print(predicted_data)
 		return render_template('result.html',values = predicted_data)
 	else:
 		return render_template('result.html',values = {'no/invalid data':'no/invaid data'})
@@ -74,11 +74,13 @@ def get_transform():
 	data_type = ['aggregate','average']
 	showed_data_name = request.form.get('data_name')
 	selected_time_series = showed_data_name 
-	print(selected_time_series)
+
+	# print(selected_time_series)
 	if showed_data_name:
 		data_value = get_from_database(showed_data_name,db,index)
 		# get frequent
-		freq_list = get_frequent(data_value)
+		freq= infer_freq(data_value)
+		freq_list = get_freqlist(freq)
 		return render_template('transform.html',values = freq_list,type = data_type)
 
 if __name__ == '__main__':

@@ -1,8 +1,6 @@
-from arima import *
 import json
 import pandas as pd
-from woxiaxiede_agg import *
-from woxiaxiede_avg import *
+
 
 def is_valid(train):
 	if not train:
@@ -15,89 +13,62 @@ def is_valid(train):
 				return False
 	return True
 
-def query(tags,index,db):
-	# words = tags.split(' ')
-	# index_pool = dict(index)
-	# new_pool = {}
-	# query_index =[]
-	# for word in words:
-	# 	for qs in index_pool:
-	# 		if word in qs:
-	# 			new_pool[qs] = index_pool[qs]
-	# 	index_pool = dict(new_pool) 
-	# 	new_pool = {}
-	# return search(index_pool,db)
-	words = tags.split(' ')
-	index_pool = {}
-	# print(words)
-	k = 0
-	for key_string in index:
-		temp = key_string.split('.')
-		if all(word in temp for word in words):
-			index_pool[key_string] = index[key_string]
-	return search(index_pool,db)
+def get_freqlist(freq):
+	selection_list = ['H','D','W','M','Q','Y']
+	name_list = ['Hour','Day','Week','Month','Quarter','Year']
+	for ind,val in enumerate(selection_list):
+		if val in freq:
+			return name_list[1:ind]
 
-def search(i,db):
-	answers = {}
-	for k,v in i.items():
-		r = db.get(v)
-		if r:
-			answers[k] = r 
-	return answers
+def infer_freq(data):
+	'''
+	just a test version, need further improve,ex,business day consideration, quarter start or end, holodays, etc.. 
+	'''
 
-def get_from_database(name,db,index):
-	i = index[name]
-	value = json.loads(db.get(i))
-	return value
+	def find(v,d):
+		l = list(d.keys())
+		start = 0
+		end = len(l) - 1
+		while start < end - 1:
+			mid = int((start + end)/2)
+			if l[mid] == v:
+				return l[mid]
+			if l[mid] > v:
+				end = mid
+			if l[mid] < v:
+				start = mid
+		if abs(v - l[start]) > abs(v - l[end]):
+			return l[end]
+		else:
+			return l[start]
 
-
-def transform(algorithm,data,data_type,time,weight):
-	if data_type =='aggregate':
-		return aggregate(algorithm,data,time,weight)
-	if data_type == 'average':
-		return average(algorithm,data,time)
+	def get_index(data):
+		df = pd.Series(data)
+		df.index = pd.to_datetime(df.index,format = '%Y-%m-%d')
+		df = pd.to_numeric(df, errors='coerce')
+		df = df.astype(float)
+		return df.index
 
 
-def aggregate(algorithm,data,time,weight):
-	# if algorithm == "woxiaxiede_agg":
-	agg_model = woxiaxiede_agg()
-	agg_model.fit(data)
-	result = agg_model.apply(time,weight)
-	return result
+	index = get_index(data)
 
-def average(algorithm,data,time):
-	alg_name = algorithm.lower()	
-	# if algorithm == 'woxiaxiede_avg':
-	agv_model = woxiaxiede_agg()
-	agv_model.fit(data)
-	result = agv_model.apply(time,weight)
-	return result
-
-def predict(algorithm,params,data,time):
-	alg_name = algorithm.lower()
-	if alg_name == 'arima':
-		arima_model = arima(params)
-		arima_model.fit(data)
-		result = arima_model.predict()
-		return result
-
-def apply(algorithm,params,data,operator,data_type,time = '5',weight = []):
-	if operator == 'p':
-		return predict(algorithm,params,data,time)
-	if operator == 't':
-		return transform(algorithm,data,data_type,time,weight)
-	return False
-
-def get_frequent(data):
-	time_list = ['D','W','M','Q','A']
-	return_list = ['Day','Week','Month','Quarter','Annual']
-	df = pd.Series(data)
-	df.index = pd.to_datetime(df.index,format = '%Y-%m-%d')
-	df = pd.to_numeric(df, errors='coerce')
-	df = df.astype(float)
-	data_freq = pd.infer_freq(df.index)
-	for idx, val in enumerate(time_list):
-		if val in data_freq:
-			return  return_list[0:idx]
-
-
+	freq = pd.infer_freq(index)
+	print(freq)
+	if freq == None:
+		diff_day = []
+		diff_second = []
+		sec_base ={1:'S',60:'min',3600:'H',86400:'D'}
+		day_base ={1:'D',7:'W',30:'M',90:'QT',365:'Y'}
+		for ind,val in enumerate(index):
+			if ind > 0:
+				diff_day.append((index[ind] - index[ind - 1]).days)
+				diff_second.append((index[ind] - index[ind - 1]).seconds)
+		mode_day = max(set(diff_day), key=diff_day.count)
+		mode_second = max(set(diff_second), key=diff_second.count)
+		if mode_day < 1:
+			return sec_base[find(mode_second,sec_base)]
+		else:
+			return day_base[find(mode_day,day_base)]
+	else:
+		return freq
+		
